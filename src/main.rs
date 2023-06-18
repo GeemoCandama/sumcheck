@@ -74,7 +74,6 @@ fn sumcheck_protocol(
             prior_poly = prover_message;
         }
     }
-
     true
 }
 
