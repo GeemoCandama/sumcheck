@@ -13,12 +13,6 @@
 // EXAMPLE FORMULAS
 //
 // x_1 || x_2 || !x_3
-fn example_a(x_1: bool, x_2: bool, x_3: bool) -> bool {
-    x_1 || x_2 || !x_3
-}
 
 // x_1 || (x_2 && !x_3)
 // OR(x_1, AND(x_2, !x_3))
-fn example_b(x_1: bool, x_2: bool, x_3: bool) -> bool {
-    x_1 || (x_2 && !x_3)
-}

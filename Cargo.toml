@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 ark-poly = "*"
 ark-ff = "*"
+ark-std = "*"
+rand = { version = "*", features = ["std", "std_rng"] }

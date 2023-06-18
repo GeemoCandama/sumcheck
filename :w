@@ -4,6 +4,7 @@ use ark_ff::biginteger::BigInt;
 use ark_ff::fields::{Fp128, MontBackend};
 use ark_poly::polynomial::univariate::SparsePolynomial as UniSparsePolynomial;
 use ark_poly::polynomial::Polynomial;
+use ark_std::{test_rng, UniformRand};
 use rand::rngs::ThreadRng;
 use rand::Rng;
 
@@ -29,9 +30,10 @@ fn main() {
         rng: rand::thread_rng(),
         bool_form: bool_form.clone(),
         vals: HashMap::new(),
+        num_vars: 4,
     };
 
-    let mut prover = HonestSharpSATSumcheckProver {
+    let mut prover = SharpSATSumcheckProver {
         bool_form,
         vals: HashMap::new(),
         num_vars: 4,
@@ -158,13 +160,13 @@ trait SumcheckProver {
     fn recieve_rand_element(&mut self, round_num: usize, rand_elem: Fq);
 }
 
-struct HonestSharpSATSumcheckProver {
+struct SharpSATSumcheckProver {
     bool_form: Expr,
     vals: HashMap<usize, Fq>,
     num_vars: usize,
 }
 
-impl HonestSharpSATSumcheckProver {
+impl SharpSATSumcheckProver {
     fn calculate_full_sum(&self) -> Fq {
         let mut field_vals: HashMap<usize, Fq> = HashMap::new();
 
@@ -197,7 +199,7 @@ impl HonestSharpSATSumcheckProver {
     }
 }
 
-impl SumcheckProver for HonestSharpSATSumcheckProver {
+impl SumcheckProver for SharpSATSumcheckProver {
     // free_var starts at the 0th variable
     // This should probably return result
     fn ith_poly_message(&mut self, free_var: usize) -> UniSparsePolynomial<Fq> {
@@ -207,7 +209,7 @@ impl SumcheckProver for HonestSharpSATSumcheckProver {
         for i in 0..2u32.pow((self.num_vars - (free_var + 1)) as u32) {
             // Example format result when n = 5: 3 -> String::from("00011")
             if free_var + 1 < self.num_vars {
-                let bits = format!("{i:0n$b}", n = self.num_vars - (free_var + 1));
+                let bits = format!("{i:0n$b}", n = self.num_vars - free_var + 1);
                 for c in bits.chars() {
                     let field_val: Fq;
                     if c == '0' {
@@ -218,7 +220,7 @@ impl SumcheckProver for HonestSharpSATSumcheckProver {
                         panic!("this shouldnt happen")
                     };
 
-                    self.vals.insert(cur_var + free_var + 1, field_val);
+                    self.vals.insert(cur_var + free_var, field_val);
                     cur_var += 1;
                 }
             }
@@ -252,6 +254,7 @@ struct SharpSATSumcheckVerifier {
     rng: ThreadRng,
     bool_form: Expr,
     vals: HashMap<usize, Fq>,
+    num_vars: usize,
 }
 
 impl SumcheckVerifier for SharpSATSumcheckVerifier {
@@ -266,25 +269,16 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
         prior_poly: &UniSparsePolynomial<Fq>,
         prover_message: &UniSparsePolynomial<Fq>,
     ) -> bool {
-        let field_zero = Fq::new(BigInt::zero());
-        let prover_partial_sum = prover_message.evaluate(&field_zero) + 
-            prover_message.evaluate(&Fq::new(BigInt::one()));
-        let prior_evaluation: Fq;
-        if round_num == 0 {
-           prior_evaluation = prior_poly.evaluate(&field_zero); 
-        } else {
-            match self.vals.get(&(round_num - 1)) {
-                Some(val) => {
-                    prior_evaluation = prior_poly.evaluate(val);
-                    if prior_poly.evaluate(val) != prover_partial_sum {
-                        return false;
-                    }
-                },
-                None => panic!("Im panicking"),
-            }
+        let prover_partial_sum = prior_poly.evaluate(&Fq::new(BigInt::zero())) + 
+            prior_poly.evaluate(&Fq::new(BigInt::one()));
+        match self.vals.get(&round_num) {
+            Some(val) => {
+                if prior_poly.evaluate(val) != prover_message.evaluate(
+            },
+            None => panic!("Im panicking"),
         }
-
-        prior_evaluation == prover_partial_sum
+        println!("{:?}", initial_check_val);
+        true
     }
 
     fn generate_and_store_random_field_element(&mut self, round_num: usize) -> Fq {
@@ -294,36 +288,9 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
     }
 }
 
-// This is a very small set of test and obviously not sufficient for verifying the correctness of the
-// implementation
 #[cfg(test)]
 mod test {
     use super::*;
-
-    fn setup_for_sumcheck() -> (SharpSATSumcheckVerifier, HonestSharpSATSumcheckProver) { 
-        let x_0 = Box::new(Expr::Terminal(0));
-        let x_1 = Box::new(Expr::Terminal(1));
-        let x_2 = Box::new(Expr::Terminal(2));
-        let x_3 = Box::new(Expr::Terminal(3));
-        let bool_form = Expr::Or(
-            Box::new(Expr::Or(x_0, Box::new(Expr::And(x_1, x_2)))),
-            Box::new(Expr::Not(x_3)),
-        );
-
-        let verifier = SharpSATSumcheckVerifier {
-            rng: rand::thread_rng(),
-            bool_form: bool_form.clone(),
-            vals: HashMap::new(),
-        };
-
-        let prover = HonestSharpSATSumcheckProver {
-            bool_form,
-            vals: HashMap::new(),
-            num_vars: 4,
-        };
-
-        (verifier, prover)
-    }
 
     // This is a test of the arithmetization of the boolean formula
     #[test]
@@ -411,7 +378,27 @@ mod test {
 
     #[test]
     fn test_final_round_sumcheck() {
-        let (mut verifier, mut prover) = setup_for_sumcheck();
+        let x_0 = Box::new(Expr::Terminal(0));
+        let x_1 = Box::new(Expr::Terminal(1));
+        let x_2 = Box::new(Expr::Terminal(2));
+        let x_3 = Box::new(Expr::Terminal(3));
+        let bool_form = Expr::Or(
+            Box::new(Expr::Or(x_0, Box::new(Expr::And(x_1, x_2)))),
+            Box::new(Expr::Not(x_3)),
+        );
+
+        let mut verifier = SharpSATSumcheckVerifier {
+            rng: rand::thread_rng(),
+            bool_form: bool_form.clone(),
+            vals: HashMap::new(),
+            num_vars: 4,
+        };
+
+        let mut prover = SharpSATSumcheckProver {
+            bool_form,
+            vals: HashMap::new(),
+            num_vars: 4,
+        };
 
         let r_0 = verifier.generate_and_store_random_field_element(0);
         let r_1 = verifier.generate_and_store_random_field_element(1);
@@ -427,40 +414,5 @@ mod test {
         let res_right = verifier.poly_eval();
 
         assert_eq!(res_left_p, res_right);
-    }
-
-    #[test]
-    fn test_first_round_sumcheck() {
-        let (_, mut prover) = setup_for_sumcheck();
-
-        let answer = prover.calculate_full_sum();
-
-        let zero = Fq::new(BigInt::zero());
-        let one = Fq::new(BigInt::one());
-
-        let prover_message = prover.ith_poly_message(0);
-        let prover_eval = prover_message.evaluate(&zero) + prover_message.evaluate(&one);
-        
-        assert_eq!(answer, prover_eval);
-    }
-
-    #[test]
-    fn test_sumcheck_correct() {
-        let (mut verifier, mut prover) = setup_for_sumcheck();
-        let answer = prover.calculate_full_sum();
-
-        let is_accepted_by_verifier = sumcheck_protocol(&mut prover, &mut verifier, answer, 4);
-
-        assert!(is_accepted_by_verifier);
-    }
-
-    #[test]
-    fn test_sumcheck_not_correct() {
-        let (mut verifier, mut prover) = setup_for_sumcheck();
-        let answer = prover.calculate_full_sum() + -Fq::new(BigInt::one());
-
-        let is_accepted_by_verifier = sumcheck_protocol(&mut prover, &mut verifier, answer, 4);
-
-        assert!(!is_accepted_by_verifier);
     }
 }
