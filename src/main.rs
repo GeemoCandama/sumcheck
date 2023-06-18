@@ -88,7 +88,7 @@ pub enum Expr {
 impl Expr {
     pub fn evaluate(&self, vals: &HashMap<usize, bool>) -> bool {
         match self {
-            Expr::Terminal(ref t) => *vals.get(t).unwrap_or(&false),
+            Expr::Terminal(ref t) => *vals.get(t).unwrap(),
             Expr::And(ref a, ref b) => a.evaluate(vals) && b.evaluate(vals),
             Expr::Or(ref a, ref b) => a.evaluate(vals) || b.evaluate(vals),
             Expr::Not(ref a) => !a.evaluate(vals),
