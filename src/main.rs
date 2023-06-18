@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use ark_ff::biginteger::BigInt;
 use ark_ff::fields::{Fp128, MontBackend};
 use ark_poly::polynomial::univariate::SparsePolynomial as UniSparsePolynomial;
@@ -14,6 +12,7 @@ pub struct FqConfig;
 pub type Fq = Fp128<MontBackend<FqConfig, 2>>;
 
 fn main() {
+    let field_zero = Fq::new(BigInt::zero());
     // Setup prover and Verifier with the boolean function:
     //  x_0 || x_1 && x_2 || !x_3
     let x_0 = Box::new(Expr::Terminal(0));
@@ -28,12 +27,12 @@ fn main() {
     let mut verifier = SharpSATSumcheckVerifier {
         rng: rand::thread_rng(),
         bool_form: bool_form.clone(),
-        vals: HashMap::new(),
+        vals: vec![field_zero; 4],
     };
 
     let mut prover = HonestSharpSATSumcheckProver {
         bool_form,
-        vals: HashMap::new(),
+        vals: vec![field_zero; 4],
         num_vars: 4,
     };
 
@@ -86,22 +85,19 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn evaluate(&self, vals: &HashMap<usize, bool>) -> bool {
+    pub fn evaluate(&self, vals: &[bool]) -> bool {
         match self {
-            Expr::Terminal(ref t) => *vals.get(t).unwrap(),
+            Expr::Terminal(t) => vals[*t],
             Expr::And(ref a, ref b) => a.evaluate(vals) && b.evaluate(vals),
             Expr::Or(ref a, ref b) => a.evaluate(vals) || b.evaluate(vals),
             Expr::Not(ref a) => !a.evaluate(vals),
         }
     }
 
-    fn sharp_sat_arithmetization_evaluate_full(&self, vals: &HashMap<usize, Fq>) -> Fq {
+    fn sharp_sat_arithmetization_evaluate_full(&self, vals: &[Fq]) -> Fq {
         let one = Fq::new(BigInt::new([1, 0]));
         match self {
-            Expr::Terminal(t) => match vals.get(t) {
-                Some(b) => *b,
-                None => panic!("This shouldnt happen"),
-            },
+            Expr::Terminal(t) => vals[*t],
             Expr::And(a, b) => {
                 a.sharp_sat_arithmetization_evaluate_full(vals)
                     * b.sharp_sat_arithmetization_evaluate_full(vals)
@@ -120,7 +116,7 @@ impl Expr {
     fn sharp_sat_arithmetization_uni(
         &self,
         free_var: usize,
-        vals: &HashMap<usize, Fq>,
+        vals: &[Fq],
     ) -> UniSparsePolynomial<Fq> {
         let one = Fq::new(BigInt::one());
         match self {
@@ -128,10 +124,7 @@ impl Expr {
                 if *t == free_var {
                     UniSparsePolynomial::from_coefficients_slice(&[(1, one)])
                 } else {
-                    match vals.get(t) {
-                        Some(b) => UniSparsePolynomial::from_coefficients_slice(&[(0, *b)]),
-                        None => panic!("This shouldnt happen"),
-                    }
+                    UniSparsePolynomial::from_coefficients_slice(&[(0, vals[*t])])
                 }
             }
             Expr::And(a, b) => a
@@ -159,13 +152,13 @@ trait SumcheckProver {
 
 struct HonestSharpSATSumcheckProver {
     bool_form: Expr,
-    vals: HashMap<usize, Fq>,
+    vals: Vec<Fq>,
     num_vars: usize,
 }
 
 impl HonestSharpSATSumcheckProver {
     fn calculate_full_sum(&self) -> Fq {
-        let mut field_vals: HashMap<usize, Fq> = HashMap::new();
+        let mut field_vals = self.vals.clone();
 
         // iterate over the boolean hypercube
         let mut cur_var = 0;
@@ -250,7 +243,7 @@ trait SumcheckVerifier {
 struct SharpSATSumcheckVerifier {
     rng: ThreadRng,
     bool_form: Expr,
-    vals: HashMap<usize, Fq>,
+    vals: Vec<Fq>,
 }
 
 impl SumcheckVerifier for SharpSATSumcheckVerifier {
@@ -272,7 +265,7 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
         if round_num == 0 {
            prior_evaluation = prior_poly.evaluate(&field_zero); 
         } else {
-            match self.vals.get(&(round_num - 1)) {
+            match self.vals.get(round_num - 1) {
                 Some(val) => {
                     prior_evaluation = prior_poly.evaluate(val);
                 },
@@ -297,6 +290,7 @@ mod test {
     use super::*;
 
     fn setup_for_sumcheck() -> (SharpSATSumcheckVerifier, HonestSharpSATSumcheckProver) { 
+        let field_zero = Fq::new(BigInt::zero());
         let x_0 = Box::new(Expr::Terminal(0));
         let x_1 = Box::new(Expr::Terminal(1));
         let x_2 = Box::new(Expr::Terminal(2));
@@ -309,12 +303,12 @@ mod test {
         let verifier = SharpSATSumcheckVerifier {
             rng: rand::thread_rng(),
             bool_form: bool_form.clone(),
-            vals: HashMap::new(),
+            vals: vec![field_zero; 4],
         };
 
         let prover = HonestSharpSATSumcheckProver {
             bool_form,
-            vals: HashMap::new(),
+            vals: vec![field_zero; 4],
             num_vars: 4,
         };
 
@@ -336,8 +330,8 @@ mod test {
             Box::new(Expr::Not(Box::new(x_2))),
         );
         // These are the initial values. They will change immediately.
-        let mut bool_vals: HashMap<usize, bool> = HashMap::new();
-        let mut field_vals: HashMap<usize, Fq> = HashMap::new();
+        let mut bool_vals = [false; 3];
+        let mut field_vals = [zero; 3];
 
         // iterate over the boolean hypercube
         let mut cur_var = 0;
@@ -360,8 +354,8 @@ mod test {
                     panic!("this shouldnt happen")
                 };
 
-                bool_vals.insert(cur_var, bool_val);
-                field_vals.insert(cur_var, field_val);
+                bool_vals[cur_var] = bool_val;
+                field_vals[cur_var] = field_val;
                 cur_var += 1;
             }
             bool_form_sum += if simple_expression.evaluate(&bool_vals) {
@@ -391,9 +385,7 @@ mod test {
             Box::new(Expr::Not(Box::new(x_2))),
         );
         // These are the initial values. They will change immediately.
-        let vals: HashMap<usize, Fq> = [(0usize, zero), (1usize, zero), (2usize, one)]
-            .into_iter()
-            .collect();
+        let vals = [zero, zero, one];
 
         // Its equivalent to the full polynomial with everything except for the 0th variable
         // specified P(X_0, 0, 1)
