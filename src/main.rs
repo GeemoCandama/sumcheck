@@ -177,7 +177,7 @@ impl HonestSharpSATSumcheckProver {
                     panic!("this shouldnt happen")
                 };
 
-                field_vals.insert(cur_var, field_val);
+                field_vals[cur_var] = field_val;
                 cur_var += 1;
             }
             arithmetized_sum += self
@@ -210,7 +210,7 @@ impl SumcheckProver for HonestSharpSATSumcheckProver {
                         panic!("this shouldnt happen")
                     };
 
-                    self.vals.insert(cur_var + free_var + 1, field_val);
+                    self.vals[cur_var + free_var + 1] = field_val;
                     cur_var += 1;
                 }
             }
@@ -225,7 +225,7 @@ impl SumcheckProver for HonestSharpSATSumcheckProver {
     }
 
     fn recieve_rand_element(&mut self, round_num: usize, rand_elem: Fq) {
-        self.vals.insert(round_num, rand_elem);
+        self.vals[round_num] = rand_elem;
     }
 }
 
@@ -278,7 +278,7 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
 
     fn generate_and_store_random_field_element(&mut self, round_num: usize) -> Fq {
         let rand_field: Fq = self.rng.gen();
-        self.vals.insert(round_num, rand_field);
+        self.vals[round_num] = rand_field;
         rand_field
     }
 }
