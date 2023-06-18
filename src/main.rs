@@ -269,7 +269,7 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
                 Some(val) => {
                     prior_evaluation = prior_poly.evaluate(val);
                 },
-                None => panic!("Im panicking"),
+                None => panic!("No value for the index"),
             }
         }
 

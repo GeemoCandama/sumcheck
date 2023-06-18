@@ -37,9 +37,9 @@ pub enum Expr {
 Evaluating an expression takes advantage of the recursive structure:
 ```rust
 impl Expr {
-    pub fn evaluate(&self, vals: &HashMap<usize, bool>) -> bool {
+    pub fn evaluate(&self, vals: &[bool]) -> bool {
         match self {
-            Expr::Terminal(ref t) => *vals.get(t).unwrap(),
+            Expr::Terminal(t) => vals[*t],
             Expr::And(ref a, ref b) => a.evaluate(vals) && b.evaluate(vals),
             Expr::Or(ref a, ref b) => a.evaluate(vals) || b.evaluate(vals),
             Expr::Not(ref a) => !a.evaluate(vals),
@@ -62,13 +62,10 @@ impl Expr {
     // This is equivalent to evaluating the arithmetized polynomial at at point.
     // Doing it this way allows us to avoid calculating all the terms in the 
     // multivariate polynomial resulting from the arithmetization process.
-    fn sharp_sat_arithmetization_evaluate_full(&self, vals: &HashMap<usize, Fq>) -> Fq {
+    fn sharp_sat_arithmetization_evaluate_full(&self, vals: &[Fq]) -> Fq {
         let one = Fq::new(BigInt::new([1, 0]));
         match self {
-            Expr::Terminal(t) => match vals.get(t) {
-                Some(b) => *b,
-                None => panic!("Terminal with None value"),
-            },
+            Expr::Terminal(t) => vals[*t],
             //  AND(x, y) -> x * y
             Expr::And(a, b) => {
                 a.sharp_sat_arithmetization_evaluate_full(vals)
@@ -143,7 +140,7 @@ I chose to use trait objects to keep the protocol abstracted from our particular
 ```rust
 struct HonestSharpSATSumcheckProver {
     bool_form: Expr,
-    vals: HashMap<usize, Fq>,
+    vals: Vec<Fq>,
     num_vars: usize,
 }
 
@@ -169,7 +166,7 @@ impl SumcheckProver for HonestSharpSATSumcheckProver {
                         panic!("this shouldnt happen")
                     };
 
-                    self.vals.insert(cur_var + free_var + 1, field_val);
+                    self.vals[cur_var + free_var + 1] = field_val;
                     cur_var += 1;
                 }
             }
@@ -193,7 +190,7 @@ impl SumcheckProver for HonestSharpSATSumcheckProver {
 struct SharpSATSumcheckVerifier {
     rng: ThreadRng,
     bool_form: Expr,
-    vals: HashMap<usize, Fq>,
+    vals: Vec<Fq>,
 }
 
 impl SumcheckVerifier for SharpSATSumcheckVerifier {
@@ -227,7 +224,7 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
                     // in the ith round this is p_{i-1}(r_{i-1})
                     prior_evaluation = prior_poly.evaluate(val);
                 },
-                None => panic!("No value for the key"),
+                None => panic!("No value for the index"),
             }
         }
         // check that p_{i-1}(r_{i-1}) = p_i(0) + p_i(1)
@@ -238,7 +235,7 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
     // p = 170141183460469231731687303715884105727
     fn generate_and_store_random_field_element(&mut self, round_num: usize) -> Fq {
         let rand_field: Fq = self.rng.gen();
-        self.vals.insert(round_num, rand_field);
+        self.vals[round_num] = rand_field;
         rand_field
     }
 }
