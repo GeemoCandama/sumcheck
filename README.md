@@ -1,6 +1,6 @@
 # The Key to Delegating (Computation)
 
-![Banner: The Key to Delegating](https://github.com/username/repository/blob/master/images/TheKeyToDelegating.jpg)
+![Banner: The Key to Delegating](https://github.com/GeemoCandama/sumcheck/blob/main/images/TheKeyToDelegating.jpg)
 
 ## Introduction
 
