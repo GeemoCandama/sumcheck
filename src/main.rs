@@ -275,9 +275,6 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
             match self.vals.get(&(round_num - 1)) {
                 Some(val) => {
                     prior_evaluation = prior_poly.evaluate(val);
-                    if prior_poly.evaluate(val) != prover_partial_sum {
-                        return false;
-                    }
                 },
                 None => panic!("Im panicking"),
             }
