@@ -7,7 +7,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;What problems can be delegated to a server or collection of servers and verified by a
 client with an efficient proof of correctness? This is an important question that may have just been
 [resolved](https://arxiv.org/abs/2001.04383), but in this essay we'll focus on an earlier result that surpised many computer
-scientists. The result lies at the heart of important theoretical advances as well 
+scientists. The result lies at the heart of important theoretical advances as well as
 practical systems for delegating computation, it's called the Sumcheck Protocol. To explore the details of the protocol we'll focus on a
 concrete problem, namely #SAT.
 
