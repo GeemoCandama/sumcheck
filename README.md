@@ -6,24 +6,24 @@
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;What problems can be delegated to a server or collection of servers and verified by a
 client with an efficient proof of correctness? This is an important question that may have just been
-[resolved](https://arxiv.org/abs/2001.04383), but in this essay we'll focus on an earlier result that surpised many computer
+[resolved](https://arxiv.org/abs/2001.04383), but in this essay we'll focus on an earlier result in this direction that surpised many computer
 scientists. The result lies at the heart of important theoretical advances as well as
 practical systems for delegating computation, it's called the Sumcheck Protocol. To explore the details of the protocol we'll focus on a
 concrete problem, namely #SAT.
 
 ## Interactive Proof Systems
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let's formalize one class of methods for computation delegation, in particular interactive proof systems. A $k$-message interactive proof system for a language $L$ with completeness $c$ and soundness $s$, consists of a potentially computationally unbounded prover $P$ and a probabilistic polynomial time verifier $V$ that exchange messages to form the transcript. The system is initialized with both $V$ and $P$ receiving the input $x$, then they alternate sending messages to create the transcript $t = (V(r), P)(x) = (m_1, m_2, ..., m_k)$ where $r$ is $V$'s internal randomness and $k$ is the number of messages passed. Following the exchange $V$ uses $x$, $t$, and $r$ to decide whether to accept (output 1) or reject (output 0). Intuitively, the verifier should accept with high probability when the prover is honest and with low probablity when the prover is not. Formally:  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Let's formalize one class of methods for computation delegation, in particular interactive proof systems. A $k$-message interactive proof system for a language $L$ with completeness $c$ and soundness $s$, consists of a potentially computationally unbounded prover $P$ and a probabilistic polynomial time verifier $V$ that exchange messages to form the transcript. The system is initialized with both $V$ and $P$ receiving the input $x$, then they alternate sending messages to create the transcript $t = (V(r), P)(x) = (m_1, m_2, ..., m_k)$ where $r$ is $V$'s internal randomness and $k$ is the number of messages passed. Following the exchange, $V$ uses $x$, $t$, and $r$ to decide whether to accept (output 1) or reject (output 0). Intuitively, the verifier should accept with high probability when the prover is honest and with low probablity when the prover is not. Formally:  
 1. $\forall x \in L$, $Pr[V(x, t, r) = 1] \ge c$  
 2. $\forall x \notin L$ and every prover stategy $P', Pr[V(x, t', r) = 1] \leq s$
 
-The complexity class IP is the class of all languages with an interactive proof system with $c = 2/3$ and $s = 1/3$. $IP$ can be viewed as an extension of $NP$, since setting $s = 0$, $c = 1$, $k = 0$ would result in $NP$. Clearly $NP \subseteq IP$, but how much bigger than $NP$ is $IP$? How much do we gain from the addition of interaction and randomness?
+The complexity class $IP$ is the class of all languages with an interactive proof system with $c = 2/3$ and $s = 1/3$. $IP$ can be viewed as an extension of $NP$, since setting $s = 0$, $c = 1$, $k = 0$ would result in $NP$. Clearly $NP \subseteq IP$, but how much bigger than $NP$ is $IP$? How much do we gain from the addition of interaction and randomness?
 
 ## The Problem: #SAT
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#SAT is a [#$P$](https://en.wikipedia.org/wiki/%E2%99%AFP)-complete problem so specifying an interactive proof system for it would mean that #$P \subseteq IP$. That's exactly what we will accomplish by the end of this essay, but first we should discuss what #SAT is.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#SAT is a [# $P$](https://en.wikipedia.org/wiki/%E2%99%AFP)-complete problem so specifying an interactive proof system for it would mean that # $P \subseteq IP$. That's exactly what we will accomplish by the end of this essay, but first we should discuss what #SAT is.
 #SAT is the problem of counting the number of unique assignments that satisfy a
-given boolean function $\phi : \{0, 1\}^n \rightarrow \{0, 1\}$. The answer to #SAT can be written as $\sum_{x\in\{0, 1\}^n} \phi(x)$. If we were to try to compute this sum directly it would cost $O(2^n)$ since $|\{0, 1\}^n| = 2^n$. For even for moderately sized values of $n$ this wouldn't be feasible, as we imagine the verifier to have limited computational resources.  
+given boolean function $\phi : \{0, 1\}^n \rightarrow \{0, 1\}$. The answer to #SAT can be written as $\sum_{x\in\{0, 1\}^n} \phi(x)$. If we were to try to compute this sum directly it would cost $O(2^n)$ since $|\{0, 1\}^n| = 2^n$. Even for moderately sized values of $n$ this wouldn't be feasible, as we imagine the verifier to have limited computational resources.  
 We’ll model the boolean expressions as a recursive data structure:
 ```rust
 #[derive(Clone)]
@@ -95,7 +95,7 @@ $$p_i(X_i) = \sum_{x\in\{0, 1\}^{n-i}} p(r_1, ..., r_{i-1}, X_i, x_{i+1}, ..., x
 $V$ then checks that $p_{i-1}(r_{i-1})$ = $p_i(0) + p_i(1)$ rejecting otherwise.
 Next, $V$ sends a random field element $r_i \in \mathbb{F}$ to $P$.
 
-In the $nth$ round, $P$ sends to $V$a univariate polynomial claimed to equal:
+In the $nth$ round, $P$ sends to $V$ a univariate polynomial claimed to equal:
 $$p_n(X_n) = p(r_1, ..., r_{n-1}, X_n)$$
 $V$ then checks that $p_{n-1}(r_{n-1})$ = $p_n(0) + p_n(1)$ rejecting otherwise.
 
@@ -241,15 +241,15 @@ impl SumcheckVerifier for SharpSATSumcheckVerifier {
 }
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;We never formally specify the multivariate polynomial, because it would have many terms for large $n$. It's sufficient to just be able to evaluate the polynomial at different points. The verifiers running time is polynomial in $n$ and $deg(p)$, since there are n rounds and the polynomials $p_i$ is specified by it's coefficients. $deg(p)$ is the largest number of $AND(x, y)$ or $OR(x)$ operations applied to one particular variable. This is the largest single variable degree.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;We never formally specify the multivariate polynomial, because it would have many terms for large $n$. It's sufficient to just be able to evaluate the polynomial at different points. The verifiers running time is polynomial in $n$ and $deg(p)$, since there are $n$ rounds and the polynomial $p_i$ is specified by it's coefficients. $deg(p)$ is the largest number of $AND(x, y)$ or $OR(x)$ operations applied to one particular variable. This is the largest single variable degree.
 
 ## Intuition
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;During initialization the prover sends $C_1$ which is claimed to equal $H$, the sum of $p$ over the $n$-dimensional boolean hypercube. In each round there are two polynomials $m_i(X_i)$ and $p_i(X_i)$, which are the provers claimed polynomial and the desired polynomial respectively.
-In the first round, if $C_1 \neq m_1(0) + m_1(1)$ the verifier rejects immediately. On the other hand, if $C_1 = m_1(0) + m_1(1)$ what we'd really like to know is whether $m_1$ is equivalent to $p_1$. Since computing $p_1$ requires $2^{n-1}$ evaluations of $p$, this isn't feasible for the verifier. However, $p_1$ is of the same form as $p$ but with one less variable, so the verifier asks the prover to repeat the previous steps but for $p_1$ instead of $p$ and requires that $C_2 = m_1(r_1)$. This process recursively continues until the final round, when the prover sends $m_n$ which is claimed to equal $p_n(X_n) = p(r_1, ..., r_{n-1}, X_n)$. The verifier can now check $m_n(r_n) \stackrel{?}{=} p_n(r_n)$. For soundness, $Pr[m_n(r_n) = p_n(r_n)| m_n \neq p_n] \leq deg(p)/|\mathbb{F}|$ by the [Schwartz-Zippel Lemma](https://en.wikipedia.org/wiki/Schwartz%E2%80%93Zippel_lemma). At every round the prover could try to cheat by sending m_i != p_i and hence the soundness of the whole protocol is $deg(p)n/|\mathbb{F}|$.  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Completeness is satisfied, since if the correct $C_1$ and polynomials are sent to the verifier the randomness doesnt matter. The correct polynomials are constructed such that they satisfy the protocol, so $c = 1$.   
+In the first round, if $C_1 \neq m_1(0) + m_1(1)$ the verifier rejects immediately. On the other hand, if $C_1 = m_1(0) + m_1(1)$ what we'd really like to know is whether $m_1$ is equivalent to $p_1$. Since computing $p_1$ requires $2^{n-1}$ evaluations of $p$, this isn't feasible for the verifier. However, $p_1$ is of the same form as $p$ but with one less variable, so the verifier asks the prover to repeat the previous steps but for $p_1$ instead of $p$ and requires that $C_2 = m_1(r_1)$. This process recursively continues until the final round, when the prover sends $m_n$ which is claimed to equal $p_n(X_n) = p(r_1, ..., r_{n-1}, X_n)$. The verifier can now check $m_n(r_n) \stackrel{?}{=} p_n(r_n)$. For soundness, $Pr[m_n(r_n) = p_n(r_n)| m_n \neq p_n] \leq deg(p)/|\mathbb{F}|$ by the [Schwartz-Zippel Lemma](https://en.wikipedia.org/wiki/Schwartz%E2%80%93Zippel_lemma). At every round the prover could try to cheat by sending $m_i \neq p_i$ and hence the soundness of the whole protocol is $deg(p)n/|\mathbb{F}|$.  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Completeness is satisfied, since if the correct $C_1$ and polynomials are sent to the verifier the randomness does not matter. The correct polynomials are constructed such that they satisfy the protocol, so $c = 1$.   
 These statements obviously don't pass as proofs, but due to length constraints I'll leave the proofs to the [pros](https://youtu.be/Mw4bVlU_1gU?t=1958).
 
 
 ## Wrapping Up
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;We've constructed an interactive proof system for the #SAT problem. One can pick the size of the field so that the system has a very small soundness constant. This shows that #$P \subseteq IP$. The protocol discussed was introduced in the 1992 paper, *Algebraic methods for interactive proof systems*, by Lund, Fortnow, Karloff, and Nisan, the class $IP$ was thought not to be much larger than NP at the time. The ideas of that paper were then applied in clever ways to achieve the result, $IP = PSPACE$. The Sumcheck Protocol lies at the heart of many interactive proof systems including the [GKR protocol](https://dl.acm.org/doi/10.1145/2699436). If you want to see an example of the Sumcheck Protocol applied to #SAT carried out you can see the tests in the [github repo](https://github.com/GeemoCandama/sumcheck).
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;We've constructed an interactive proof system for the #SAT problem. One can pick the size of the field so that the system has a very small soundness error. This shows that # $P \subseteq IP$. The protocol discussed was introduced in the 1992 paper, *Algebraic methods for interactive proof systems*, by Lund, Fortnow, Karloff, and Nisan, the class $IP$ was thought not to be much larger than NP at the time. The ideas of that paper were then applied in clever ways to achieve the result, $IP = PSPACE$. The Sumcheck Protocol lies at the heart of many interactive proof systems including the [GKR protocol](https://dl.acm.org/doi/10.1145/2699436). If you want to see an example of the Sumcheck Protocol applied to #SAT carried out you can see the tests in the [github repo](https://github.com/GeemoCandama/sumcheck).
